@@ -1,0 +1,145 @@
+---
+title: "LAB04"
+author: "Smirnov"
+date: "04 12 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#K-Means Clustering
+ (K-means)  You have been asked to cluster all 50 U.S. states, including Washington D.C. and Puerto Rico, by mean household income and mean household electricity usage (both rounded by the integer).  You have decided to use a k-means clustering algorithm.
+
+Access the census data in the training2 database.  Create a table with three columns: state, mean household income, and mean electricity usage.
+
+Изначально все данные можно было получить из бд сделав такой запрос.
+Теперь все данные лежат в файле states.csv
+
+##  CREATE TABLE
+library('RODBC')
+ch <-odbcConnect("Greenplum",uid="gpadmin",case="postgresql",pwd="changeme")
+sqlDrop(ch,"income_elec_state")
+sqlQuery(ch,
+         "CREATE TABLE income_elec_state AS
+          SELECT f.name AS state,round(avg(h.hinc),0) AS income,round(avg(h.elec),0) AS elec
+          FROM fips AS f, housing_nodupes AS h 
+          WHERE h.state = f.code AND h.hinc IS NOT NULL AND h.hinc > 0 AND h.elec IS NOT NULL
+          GROUP BY f.name;")
+sqlColumns(ch,"income_state")
+dataset <-as.matrix(sqlFetch(ch,"mystate",rownames="state"))
+
+##LOAD
+Загрузим наши данные в dataset и посмотрит как они выгледят.
+Дальше нас будут интересовать график elec~income
+```{r 0 1, echo=TRUE}
+dataset <- read.csv('states.csv')
+plot(dataset)
+```
+
+a. Cluster the data and plot all 52 data points, along with the centroids.  Mark all data points and centroids belonging to a given cluster with their own color.  Here, let k=10.
+
+b. Repeat step (a) several times.  What can change each time you cluster the data?  Why?  How do you prevent these changes from occurring?
+```{r 1 1,echo=TRUE}
+clusters <- kmeans(dataset,centers=10)
+plot(dataset$income,dataset$elec, col=clusters$cluster)
+points(clusters$centers, col=1:10 , pch = 8, cex = 2)
+```
+
+## K Determination
+
+c. Once you’ve accounted for the issues in the previous step, determine a reasonable value of k.  Why would you suggest this value of k?
+
+  - Мы видим что для данной модели лучше выбрать 4-5 кластеров.
+```{r 1 2,echo=TRUE}
+mydata <- dataset
+wss <- numeric(15)
+for (i in 1:15) wss[i] <- sum(kmeans(mydata,centers=i)$withinss)
+plot(1:15, wss, type="b")
+```
+
+## Scale
+
+d. Convert the mean household income and mean electricity usage to a log10 scale and cluster this transformed dataset.  How has the clustering changed?  Why?
+```{r 2 1,echo=TRUE}
+log10_dataset<-dataset[,1:3]
+log10_dataset[,2:3]<-log10(dataset[,2:3])
+```
+
+```{r 2 2,echo=TRUE}
+log10_clusters <- kmeans(log10_dataset[,2:3],centers=10)
+center_point <- log10_clusters$cluster[1:52]
+log10_dataset<-cbind(log10_dataset,center_point)
+
+plot(log10_dataset$income,log10_dataset$elec,col=log10_dataset$center_point,xlab="income",ylab="elec")
+points(log10_clusters$centers,col=1:10,pch=8,cex=2) 
+```
+
+## K Reevaluation
+
+Переопределим значение кластеров.
+```{r 3 1,echo=TRUE}
+mydata <- log10_dataset[,]
+wss <- numeric(15)
+for (i in 1:15) wss[i] <- sum(kmeans(mydata,centers=i)$withinss)
+plot(1:15, wss, type="b")
+```
+
+## K Reevaluation II
+
+f. Have you observed an outlier in the data?  Remove the outlier and, once again, reevaluate your choice of k.
+Здесь мы удалим все выбросы.
+```{r 4 1,echo=TRUE}
+filtred_dataset <- log10_dataset[,1:3]
+filtred_dataset<-filtred_dataset[filtred_dataset$state!='72',]
+filtred_clusters <- kmeans(filtred_dataset[,],centers=10)
+center_point <- filtred_clusters$cluster[1:51]
+filtred_dataset<-cbind(filtred_dataset,center_point)
+```
+```{r 4 2,echo=TRUE}
+mydata <- filtred_dataset[,1:2]
+wss <- numeric(15)
+for (i in 1:15) wss[i] <- sum(kmeans(mydata,centers=i)$withinss)
+plot(1:15, wss, type="b")
+```
+
+## Maps and Code
+g.      Color a map of the U.S. according to the clustering you obtained.  To simplify this task, use the “maps” package and color only the 48 contiguous states and Washington D.C.
+
+1 step:
+```{r map 1,echo=TRUE}
+require(maps)
+map_order <- c('AL', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'DC', 'FL', 
+               'GA', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 
+               'MD', 'MA', 'MA', 'MA', 'MI', 'MI', 'MN', 'MS', 'MO', 
+               'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NY', 'NY', 
+               'NY', 'NC', 'NC', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 
+               'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'VA', 
+               'VA', 'WA', 'WA', 'WA', 'WA', 'WA', 'WV', 'WI', 'WY')
+```
+
+2 step:               
+```{r map 2,echo=TRUE}
+named_vector <- setNames(filtred_dataset$center_point, filtred_dataset$state)
+map_color <- as.factor(named_vector[map_order])
+```
+
+2 step(as idea, doesn't work well):
+```{r map 3,echo=TRUE}
+map_color <- filtred_clusters$cluster[order(filtred_dataset$state)]
+```
+
+3 step:
+
+```{r map 4,echo=TRUE}
+maps::map('state',col = map_color,fill=T)
+```
+
+##Доп. задание от Дюмина
+```{r dop, echo=TRUE}
+d <- dist(scale(dataset), method = "euclidean")
+cl <- hclust(d, method = "single")
+plot(cl, cex = 0.7)
+rect.hclust(cl, k = 4, border = 2:5)
+```

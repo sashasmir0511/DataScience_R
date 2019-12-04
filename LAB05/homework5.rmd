@@ -1,0 +1,78 @@
+---
+title: "homework5"
+author: "vanyapanf"
+date: "11 11 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Libraries
+```{r 0,echo=TRUE}
+library("arules")
+library("arulesViz")
+```
+
+## Data Exploration and Rules Inference
+
+```{r 1,echo=TRUE}
+dataset1<-read.transactions("C:/r_labs/r_studio/AssociationRules.csv", sep = " ")
+summary(dataset1)
+```
+
+```{r 1 1,echo=TRUE}
+rules<-apriori(dataset1,parameter = list(supp = 0.01, conf = 0.0, maxlen = 14))
+summary(rules)
+```
+
+```{r 1 2,echo=TRUE}
+rules<-apriori(dataset1,parameter = list(supp = 0.01, conf = 0.5, maxlen = 14))
+summary(rules)
+```
+
+## Rules Visualization: Basic
+
+```{r 2,echo=TRUE}
+plotly_arules(rules, measure = c("support", "confidence"), shading = "lift")
+```
+
+```{r 2 1,echo=TRUE}
+plotly_arules(rules, measure = c("support", "lift"), shading = "confidence")
+```
+
+```{r 2 2,echo=TRUE}
+rules<-apriori(dataset1,parameter = list(supp = 0.1, conf = 0.0))
+plotly_arules(rules, measure = c("support", "lift"), shading = "confidence")
+```
+
+```{r 2 3,echo=TRUE}
+rules<-apriori(dataset1,parameter = list(supp = 0.01, conf = 0.8))
+plotly_arules(rules, measure = c("support", "lift"), shading = "confidence")
+```
+
+```{r 2 4,echo=TRUE}
+rules2 <- sort(rules, decreasing=FALSE, by="lift")
+inspect(rules2)
+```
+
+## Rules Visualization: Matrix
+
+```{r 3,echo=TRUE}
+rules3 <- apriori(dataset1, parameter = list(support = 0.01, confidence = 0.8))
+inspect(rules3)
+```
+
+```{r 3 1,echo=TRUE}
+plot(rules3, method="matrix", measure=c("lift","confidence"), shading = c("lift", "confidence"), interactive = TRUE)
+```
+
+## Rules Visualization: Graph
+
+```{r 4,echo=TRUE}
+rules4 <- apriori(dataset1, parameter = list(support = 0.01, confidence = 0.5))
+subrules2 <- head(sort(rules4, by="lift"), 3)
+plot(subrules2, method="graph")
+```

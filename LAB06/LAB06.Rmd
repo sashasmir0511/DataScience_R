@@ -1,0 +1,81 @@
+---
+title: "HW06"
+author: "Smirnov"
+date: "04 12 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Linear regression
+
+## LOAD DATASET
+
+```{r load,echo=TRUE}
+data <- read.csv('zeta_nodupes.csv')
+data <- subset(data, data$education < 18 & data$education > 8 & data$income < 200000 & data$income > 10000)
+data$log_income <- log10(data$income)
+head(data)
+```
+
+## Create a scatter plot showing the effect age has on log_income and paste it here.
+## Do you see any linear relationship between the two variables?
+```{r 1 1,echo=TRUE}
+modelAge <- lm(log_income ~ age, data=data)
+print(modelAge)
+```
+```{r 1 2,echo=TRUE}
+summary(modelAge)
+```
+
+```{r plot 1,echo=TRUE}
+plot(data$age, data$log_income)
+abline(modelAge)
+abline(h=mean(data$log_income))
+```
+```{r plot 2,echo=TRUE}
+library(hexbin)
+hexbinplot(data$log_income ~ data$age)
+```
+## Create new model
+## New regression and predict log_income with education
+```{r 2 1,echo=TRUE}
+modelEducation <- lm(log_income ~ education, data=data)
+print(modelEducation)
+```
+```{r 2 2,echo=TRUE}
+summary(modelEducation)
+```
+```{r 2 3,echo=TRUE}
+plot(data$education, data$log_income)
+abline(modelEducation)
+abline(h=mean(data$log_income))
+```
+```{r plot 3,echo=TRUE}
+hexbinplot(data$log_income ~ data$education)
+```
+
+# Multiple regression model
+
+```{r 3 1,echo=TRUE}
+multipleModel <- lm(log_income ~ age + education + employment, data=data)
+print(multipleModel)
+```
+
+```{r 3 2,echo=TRUE}
+summary(multipleModel)
+```
+```{r 3 3,echo=TRUE}
+plot(multipleModel)
+```
+
+```{r 3 4,echo=TRUE}
+testData <- data.frame (age= c(3,3,4,4), education = c(5,6,9,10), employment = c(4,4,9,9))
+logPredictions <- predict(multipleModel,newdata=testData,type="response")
+logPredictions
+```
+```{r 3 5,echo=TRUE}
+predictions <- 10**logPredictions
+```
