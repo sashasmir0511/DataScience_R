@@ -12,20 +12,22 @@ knitr::opts_chunk$set(echo = TRUE)
 #Linear regression
 
 ## LOAD DATASET
-
+Загружаем наши данные. Избавляемся от выбросов и берём log от income.
 ```{r load,echo=TRUE}
 data <- read.csv('zeta_nodupes.csv')
 data <- subset(data, data$education < 18 & data$education > 8 & data$income < 200000 & data$income > 10000)
 data$log_income <- log10(data$income)
 head(data)
 ```
-
-## Create a scatter plot showing the effect age has on log_income and paste it here.
-## Do you see any linear relationship between the two variables?
+## Зависимость income от age
+Тут мы видим что был построен график:
+y = 4.7 - 0.002x
 ```{r 1 1,echo=TRUE}
 modelAge <- lm(log_income ~ age, data=data)
 print(modelAge)
 ```
+Тут мы видим параметры нашей модели, такие как t_value,P_value,R^2,F-statistic.
+Прочитать про них можно на http://r-statistics.co/Linear-Regression.html
 ```{r 1 2,echo=TRUE}
 summary(modelAge)
 ```
@@ -39,6 +41,7 @@ abline(h=mean(data$log_income))
 library(hexbin)
 hexbinplot(data$log_income ~ data$age)
 ```
+В итоге мы получили плохую модель, а значит возраст плохо предсказывает доход.
 ## Create new model
 ## New regression and predict log_income with education
 ```{r 2 1,echo=TRUE}
@@ -67,6 +70,13 @@ print(multipleModel)
 ```{r 3 2,echo=TRUE}
 summary(multipleModel)
 ```
+Residuals vs.Fitted: you want to make sure that the errors are evenly distributed over the entire range of fitted values; if the errors are markedly larger (or biased either positively or negatively) in some range of the data, this is evidence that this model may not be entirely appropriate for the problem.
+
+Q-Q plot: tests whether or not the errors are in fact distributed approximately normally (as the model formulation assumes). If they are, the Q-Q plot will be along the x=y line. If they aren't, the model may still be adequate, but perhaps a more robust modeling method is suitable. Also, the usual diagnostics (R-squared, t-tests for significance) will not be valid.
+
+Scale-Location: a similar idea to Residuals v. Fitted; you want to make sure that the variance (or its stand-in, "scale") is approximately constantover the range of fitted values.
+
+Residuals vs.Leverage: used for identifying potential outliers and "influential" points. Points that are far from the centroid of the scatterplot in the x direction (high leverage) are influential, in the sense that they may have disproportionate influence on the fit (that doesn't mean they are wrong, necessarily). Points that are far from the centroid in the y direction (large residuals) are potential outliers.
 ```{r 3 3,echo=TRUE}
 plot(multipleModel)
 ```
