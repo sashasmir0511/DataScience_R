@@ -1,0 +1,83 @@
+---
+title: "LAB07"
+author: "Smirnov"
+date: "08 12 2019"
+output: html_document
+---
+# Logistical regression 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+At first we read the data from survey.csv
+```{r read1, echo=TRUE}
+dat <- read.csv("survey.csv.txt",header=TRUE,sep=",")
+head(dat)
+```
+Then we slightly look around our data
+```{r head, echo=TRUE}
+head(as.factor(dat$Price)) 
+```
+```{r table, echo=TRUE}
+table(dat$MYDEPV)
+```
+
+```{r with, echo=TRUE}
+with(dat, table(Price,MYDEPV)) 
+```
+
+
+Make first log regression that predict MYDEPV with Income, Age and Price:
+```{r ,echo=TRUE}
+logModel <- glm(MYDEPV ~ Income + Age + as.factor(Price), data = dat, family=binomial(link="logit"), na.action=na.pass)
+summary(logModel)
+
+```
+
+```{r ,echo=TRUE}
+library(ROCR)
+pred = predict(logModel, type="response")
+predObj = prediction(pred, dat$MYDEPV)
+rocObj = performance(predObj, measure="tpr", x.measure="fpr")  # creates ROC curve obj
+aucObj = performance(predObj, measure="auc")
+auc = aucObj@y.values[[1]]
+plot(rocObj, main = paste("Area under the curve:", auc))
+sum(predObj)
+
+```
+
+```{r, }
+pred = predict(logModel, type="response")
+conf <-table(dat[,1],predicted=pred)
+conf
+```
+
+```{r ,echo=TRUE}
+confint(logModel)
+```
+
+# Coeﬃcients Analysis  
+For every change by one unit result will change on such percent:  
+```{r ,echo=TRUE}
+100 * exp(logModel$coefficients) - 100
+```
+
+# Check sums   
+Test the rule that the probability mass equals the counts:
+```{R 1,echo=TRUE}
+dat$predicted <- predict(logModel,newdata=data.frame(Income=dat$Income,Age=dat$Age,Price=dat$Price),type="response") 
+sum(dat$predicted)
+
+```
+```{r ,echo=TRUE}
+sum(dat$MYDEPV) 
+```
+They are equal! Great  
+
+# TEST
+
+```{r ,echo=TRUE}
+testData <- data.frame (Age = c(99), Income = c(36.572), Price = c(30))
+testData$Prob <- predict(logModel,newdata=testData,type="response")
+testData
+```
